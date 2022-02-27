@@ -21,7 +21,6 @@ namespace JunDev76\SpawnMenuItem;
 
 use FormSystem\form\ModalForm;
 use JunDev76\EconomySystem\EconomySystem;
-use pocketmine\block\Block;
 use pocketmine\event\EventPriority;
 use pocketmine\event\player\PlayerInteractEvent;
 use pocketmine\item\Item;
@@ -32,12 +31,15 @@ use pocketmine\lang\Translatable;
 use pocketmine\permission\DefaultPermissions;
 use pocketmine\player\Player;
 use pocketmine\plugin\PluginBase;
+use pocketmine\scheduler\ClosureTask;
 
 class SpawnMenuItem extends PluginBase{
 
+    protected array $nightVisionCool = [];
+
     protected Item $commandBook;
 
-    public function getBook(Player $player) : Item{
+    public function getBook() : Item{
         $bcontents = [];
         $added = [];
         foreach($this->getServer()->getCommandMap()->getCommands() as $command){
@@ -111,7 +113,7 @@ class SpawnMenuItem extends PluginBase{
                         }
 
                         if(!isset($this->commandBook)){
-                            $this->commandBook = $this->getBook($player);
+                            $this->commandBook = $this->getBook();
                         }
 
                         if(!$player->getInventory()->canAddItem($this->commandBook)){
@@ -205,8 +207,17 @@ class SpawnMenuItem extends PluginBase{
 
             if($blockPos->x === 255 && $blockPos->y === 65 && $blockPos->z === 240){
                 $ev->cancel();
+                $name = $player->getName();
+                if(isset($this->nightVisionCool[$name])){
+                    $player->sendMessage('§a§l[시스템] §r§7잠시 후 실행해주세요.');
+                    return;
+                }
+                $this->nightVisionCool[$name] = 1;
                 $this->getServer()->dispatchCommand($player, '야간투시');
-                return;
+
+                $this->getScheduler()->scheduleDelayedTask(new ClosureTask(function() use ($name){
+                    unset($this->nightVisionCool[$name]);
+                }), 40);
             }
         }, EventPriority::NORMAL, $this, true);
     }
